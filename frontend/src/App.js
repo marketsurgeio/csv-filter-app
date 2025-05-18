@@ -12,11 +12,16 @@ import {
   MenuItem,
   CircularProgress,
   Alert,
+  TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+const API_URL = "https://csv-filter.marketsurge.io"; // Updated API endpoint for production
 
 function App() {
   const [file, setFile] = useState(null);
@@ -24,6 +29,23 @@ function App() {
   const [selectedColumns, setSelectedColumns] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [authDialogOpen, setAuthDialogOpen] = useState(true);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState(false);
+
+  // Configure axios with auth
+  const configureAxios = (user, pass) => {
+    axios.defaults.auth = {
+      username: user,
+      password: pass
+    };
+  };
+
+  const handleAuthSubmit = () => {
+    configureAxios(username, password);
+    setAuthDialogOpen(false);
+  };
 
   const onDrop = useCallback(async (acceptedFiles) => {
     const uploadedFile = acceptedFiles[0];
@@ -37,11 +59,16 @@ function App() {
     formData.append('file', uploadedFile);
 
     try {
-      const response = await axios.post(`${API_URL}/api/get-headers`, formData);
+      const response = await axios.post(`${API_URL}/get-headers`, formData);
       setHeaders(response.data.headers);
     } catch (err) {
-      setError('Error processing file. Please try again.');
-      console.error(err);
+      if (err.response && err.response.status === 401) {
+        setAuthError(true);
+        setAuthDialogOpen(true);
+      } else {
+        setError('Error processing file. Please try again.');
+        console.error(err);
+      }
     } finally {
       setLoading(false);
     }
@@ -70,7 +97,7 @@ function App() {
     formData.append('columnsToFilter', JSON.stringify(selectedColumns));
 
     try {
-      const response = await axios.post(`${API_URL}/api/process-csv`, formData, {
+      const response = await axios.post(`${API_URL}/process-csv`, formData, {
         responseType: 'blob',
       });
 
@@ -92,6 +119,39 @@ function App() {
 
   return (
     <Container maxWidth="md">
+      <Dialog open={authDialogOpen} onClose={() => {}}>
+        <DialogTitle>Authentication Required</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Username"
+            type="text"
+            fullWidth
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <TextField
+            margin="dense"
+            label="Password"
+            type="password"
+            fullWidth
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {authError && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              Invalid username or password
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleAuthSubmit} color="primary">
+            Login
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Box sx={{ my: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom align="center">
           CSV File Filter
@@ -123,6 +183,20 @@ function App() {
             <Typography variant="subtitle1" gutterBottom>
               Selected file: {file.name}
             </Typography>
+
+            <Button
+              variant="outlined"
+              color="secondary"
+              sx={{ mb: 2 }}
+              onClick={() => {
+                setFile(null);
+                setHeaders([]);
+                setSelectedColumns([]);
+                setError(null);
+              }}
+            >
+              Remove
+            </Button>
 
             <FormControl fullWidth sx={{ mt: 2 }}>
               <InputLabel>Select columns to filter (rows with empty values in these columns will be removed)</InputLabel>
