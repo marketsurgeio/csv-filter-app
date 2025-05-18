@@ -50,7 +50,6 @@ jobs:
           node-version: '18'
           
       - name: Install Backend Dependencies
-        working-directory: server
         run: npm install
         
       - name: Deploy to Server
@@ -60,7 +59,7 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            cd /home/ubuntu/csv-filter-app/server
+            cd /home/ubuntu/csv-filter-app
             git pull
             npm install
             pm2 restart csv-filter 
