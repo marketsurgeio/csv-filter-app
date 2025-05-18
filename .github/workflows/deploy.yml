@@ -52,18 +52,18 @@ jobs:
       - name: Install Backend Dependencies
         run: npm install
         
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H 44.204.8.232 >> ~/.ssh/known_hosts
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
           
       - name: Deploy to Server
         run: |
-          ssh -i ~/.ssh/id_rsa ubuntu@44.204.8.232 '
-            cd /home/ubuntu/csv-filter-app
-            git pull
-            npm install
-            pm2 restart csv-filter
-          ' 
+          aws ssm send-command \
+            --instance-ids "i-0bc6e82b4ebff712b" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=["cd /home/ubuntu/csv-filter-app", "git pull", "npm install", "pm2 restart csv-filter"]' \
+            --output-s3-bucket-name "csv-filter-app-frontend-nv" \
+            --output-s3-key-prefix "ssm-output" 
