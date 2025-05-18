@@ -52,14 +52,18 @@ jobs:
       - name: Install Backend Dependencies
         run: npm install
         
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H 44.204.8.232 >> ~/.ssh/known_hosts
+          
       - name: Deploy to Server
-        uses: appleboy/ssh-action@master
-        with:
-          host: 44.204.8.232
-          username: ubuntu
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          script: |
+        run: |
+          ssh -i ~/.ssh/id_rsa ubuntu@44.204.8.232 '
             cd /home/ubuntu/csv-filter-app
             git pull
             npm install
-            pm2 restart csv-filter 
+            pm2 restart csv-filter
+          ' 
