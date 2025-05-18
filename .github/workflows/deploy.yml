@@ -50,7 +50,7 @@ jobs:
           node-version: '18'
           
       - name: Install Backend Dependencies
-        working-directory: backend
+        working-directory: server
         run: npm install
         
       - name: Deploy to Server
